@@ -4,9 +4,10 @@ import 'dart:math';
 
 import 'package:dio/dio.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 class MyLocketServices {
-  static Dio _dio = Dio();
+  static final Dio _dio = Dio();
   static final _uploadImageController = BehaviorSubject<Map<String, dynamic>>();
   static final _uploadVideoController = BehaviorSubject<Map<String, dynamic>>();
   static final _postImageController = BehaviorSubject<bool>();
@@ -73,18 +74,14 @@ class MyLocketServices {
     }
   }
 
-  // todo: split this method to uploadToFireStorage and postToLocket
-  static Future<void> uploadImageV2(File image, String caption) async {
+  static Future<void> uploadImageV2(File image) async {
     try {
       // Bước 1: Tạo tên file ảnh và lấy kích thước file
       String nameImg = "${DateTime.now().millisecondsSinceEpoch}_vtd182.webp";
       int imageSize = await image.length();
-
-      print(_idToken);
-      print(idUser);
-      print(imageSize);
       // change size to mb
       print(imageSize / pow(2, 20));
+
       // Bước 2: Gửi yêu cầu để bắt đầu quá trình upload ảnh lên Firebase Storage
       String url =
           'https://firebasestorage.googleapis.com/v0/b/locket-img/o/users%2F$idUser%2Fmoments%2Fthumbnails%2F$nameImg?uploadType=resumable&name=users%2F$userId%2Fmoments%2Fthumbnails%2F$nameImg';
@@ -150,6 +147,7 @@ class MyLocketServices {
         print(uploadResponse);
       } catch (err) {
         print("Error when update: $err");
+        _uploadImageController.sink.add({"url": "Lỗi!!!", "success": false});
       }
 
       print("Upload done");
@@ -161,116 +159,25 @@ class MyLocketServices {
       response = await _dio.get(getUrl, options: Options(headers: getHeaders));
       String downloadToken = response.data['downloadTokens'];
 
-      // Bước 5: Đăng ảnh lên Locket với URL đã được tạo
       String thumbnailUrl = "$getUrl?alt=media&token=$downloadToken";
       print("UrlDownload: $thumbnailUrl");
-
-      var postHeaders = {'content-type': 'application/json', 'authorization': 'Bearer $_idToken'};
-      var postData = json.encode({
-        "data": {"thumbnail_url": thumbnailUrl, "caption": caption, "sent_to_all": true}
-      });
-      response = await _dio.post("https://api.locketcamera.com/postMomentV2",
-          data: postData, options: Options(headers: postHeaders));
-
-      _postImageController.sink.add(response.statusCode == 200);
-      _uploadImageController.sink.add({"url": downloadToken, "success": true});
+      _uploadImageController.sink.add({"url": thumbnailUrl, "success": true});
     } catch (error) {
       print("Error uploading image: $error");
       _postImageController.sink.add(false);
       _uploadImageController.sink.add({"url": "Lỗi!!!", "success": false});
     }
   }
-  //
-  // static Future<void> logout() async {
-  //   try {
-  //     await FirebaseAuth.instance.signOut();
-  //   } catch (error) {
-  //     print("already logged out");
-  //   }
-  // }
-  //
-  // static Future<void> uploadImage(File image, String userId) async {
-  //   try {
-  //     String uid = "${DateTime.now().millisecondsSinceEpoch}vtd1823";
-  //     print(uid);
-  //     String fileName = "$uid.webp";
-  //     Reference ref = FirebaseStorage.instance.ref().child("users/$userId/moments/thumbnails/$fileName");
-  //     UploadTask uploadTask = ref.putFile(image, SettableMetadata(contentType: 'image/webp'));
-  //
-  //     print(Firebase.app().options.storageBucket);
-  //     print(ref.fullPath);
-  //
-  //     await uploadTask.whenComplete(() async {
-  //       try {
-  //         String downloadURL = await ref.getDownloadURL();
-  //         _uploadImageController.sink.add({"url": downloadURL, "success": true});
-  //       } catch (error) {
-  //         print("Err: Fail to get download url: $error");
-  //         _uploadImageController.sink.add({"url": "Lỗi!!!", "success": false});
-  //       }
-  //     });
-  //   } catch (error) {
-  //     print("Err: Failed to upload image $error");
-  //     _uploadImageController.sink.add({"url": "Lỗi!!!", "success": false});
-  //   }
-  // }
-  //
-  // static Future<void> uploadVideo(File video, File thumbnail, String userId) async {
-  //   String uid = DateTime.now().millisecondsSinceEpoch.toString();
-  //   String videoFileName = "$uid.mp4";
-  //
-  //   // Upload thumbnail first
-  //   uploadImage(thumbnail, userId).then((_) {
-  //     _uploadImageController.stream.listen((imageResult) async {
-  //       if (imageResult['success']) {
-  //         try {
-  //           Reference ref = FirebaseStorage.instance.ref().child("users/$userId/moments/videos/$videoFileName");
-  //           UploadTask uploadTask = ref.putFile(video, SettableMetadata(contentType: 'video/mp4'));
-  //
-  //           await uploadTask.whenComplete(() async {
-  //             String downloadURL = await ref.getDownloadURL();
-  //             _uploadVideoController.sink
-  //                 .add({"videoUrl": downloadURL, "thumbUrl": imageResult['url'], "success": true});
-  //           });
-  //         } catch (error) {
-  //           print("Err: Failed to upload video $error");
-  //           _uploadVideoController.sink.add({"videoUrl": "", "thumbUrl": "", "success": false});
-  //         }
-  //       } else {
-  //         _uploadVideoController.sink.add({"videoUrl": "", "thumbUrl": "", "success": false});
-  //       }
-  //     });
-  //   });
-  // }
 
-  static Future<void> postImage(String thumbnailUrl, String caption) async {
+  static Future<void> postImageV2(String thumbnailUrl, String caption) async {
     print("Thumbnail URL: $thumbnailUrl, Caption: $caption");
     try {
-      Map<String, dynamic> req = {
-        "data": {
-          "thumbnail_url": thumbnailUrl,
-          "sent_to_all": true,
-          "migration": {"database": "locket"},
-        }
-      };
-      var url = 'https://api.locketcamera.com/postMomentV2';
-
-      print("Request payload: ${json.encode(req)}");
-
-      Response response = await _dio.post(
-        url,
-        data: json.encode(req),
-        options: Options(
-          headers: {
-            "content-type": "application/json",
-            "Authorization": "Bearer ${MyLocketServices.idToken}",
-            "accept": "*/*",
-            "accept-language": "vi-VN,vi;q=0.9",
-            "user-agent": "com.locket.Locket/1.43.1 iPhone/17.3 hw/iPhone15_3"
-          },
-        ),
-      );
-      print(response);
+      var postHeaders = {'content-type': 'application/json', 'authorization': 'Bearer $_idToken'};
+      var postData = json.encode({
+        "data": {"thumbnail_url": thumbnailUrl, "caption": caption, "sent_to_all": true}
+      });
+      var response = await _dio.post("https://api.locketcamera.com/postMomentV2",
+          data: postData, options: Options(headers: postHeaders));
       _postImageController.sink.add(response.statusCode == 200);
     } catch (error) {
       print("Error when posting image: ${error.toString()}");
@@ -281,20 +188,212 @@ class MyLocketServices {
     }
   }
 
-  static Future<void> postVideo(String videoUrl, String thumbnailUrl, String caption) async {
+  static Future<void> uploadVideoV2(File video, File thumbnail) async {
     try {
-      Map<String, dynamic> req = {"video_url": videoUrl, "thumbnail_url": thumbnailUrl, "caption": caption};
-      var url = 'https://api.locketcamera.com/postMomentV2';
+      await uploadThumbnailFromVideo(video.path).then((_) {
+        _uploadImageController.stream.listen((imageResult) async {
+          if (imageResult['success']) {
+            try {
+              String nameVideo = "${DateTime.now().millisecondsSinceEpoch}_vtd182.mp4";
+              int videoSize = await video.length();
+
+              String url =
+                  'https://firebasestorage.googleapis.com/v0/b/locket-video/o/users%2F$idUser%2Fmoments%2Fvideos%2F$nameVideo?uploadType=resumable&name=users%2F$userId%2Fmoments%2Fthumbnails%2F$nameVideo';
+              print(url);
+              var headers = {
+                'content-type': 'application/json; charset=UTF-8',
+                'authorization': 'Bearer $_idToken',
+                'x-goog-upload-protocol': 'resumable',
+                'accept': '*/*',
+                'x-goog-upload-command': 'start',
+                'x-goog-upload-content-length': videoSize.toString(),
+                'accept-language': 'vi-VN,vi;q=0.9',
+                'x-firebase-storage-version': 'ios/10.13.0',
+                'user-agent': 'com.locket.Locket/1.43.1 iPhone/17.3 hw/iPhone15_3 (GTMSUF/1)',
+                'x-goog-upload-content-type': 'video/mp4',
+                'x-firebase-gmpid': '1:641029076083:ios:cc8eb46290d69b234fa609',
+              };
+
+              var data = json.encode({
+                "name": "users/$userId/moments/videos/$nameVideo",
+                "contentType": "image/*",
+                "bucket": "",
+                "metadata": {"creator": userId, "visibility": "private"}
+              });
+
+              Response response = await _dio.post(
+                url,
+                data: data,
+                options: Options(
+                  headers: headers,
+                  validateStatus: (status) {
+                    return status! < 500;
+                  },
+                ),
+              );
+              print(response);
+
+              String uploadUrl = response.headers.value('X-Goog-Upload-URL')!;
+              var uploadHeaders = {
+                'content-type': 'application/octet-stream',
+                'x-goog-upload-protocol': 'resumable',
+                'x-goog-upload-offset': '0',
+                'x-goog-upload-command': 'upload, finalize',
+                'upload-incomplete': '?0',
+                'upload-draft-interop-version': '3',
+                'user-agent': 'com.locket.Locket/1.43.1 iPhone/17.3 hw/iPhone15_3 (GTMSUF/1)'
+              };
+              var imageBytes = await video.readAsBytes();
+
+              try {
+                var uploadResponse = await _dio.put(
+                  uploadUrl,
+                  data: imageBytes,
+                  options: Options(
+                    headers: uploadHeaders,
+                    validateStatus: (status) {
+                      return status! < 500; // Chấp nhận mọi response dưới 500
+                    },
+                  ),
+                );
+                print(uploadResponse);
+              } catch (err) {
+                print("Error when update: $err");
+                _uploadImageController.sink.add({"url": "Lỗi!!!", "success": false});
+              }
+              var getUrl =
+                  'https://firebasestorage.googleapis.com/v0/b/locket-video/o/users%2F$userId%2Fmoments%2Fvideos%2F$nameVideo';
+              var getHeaders = {'content-type': 'application/json; charset=UTF-8', 'authorization': 'Bearer $_idToken'};
+              response = await _dio.get(getUrl, options: Options(headers: getHeaders));
+              String downloadToken = response.data['downloadTokens'];
+
+              String downloadURL = "$getUrl?alt=media&token=$downloadToken";
+              _uploadVideoController.sink
+                  .add({"videoUrl": downloadURL, "thumbUrl": imageResult['url'], "success": true});
+            } catch (err) {
+              print("Err: Failed to upload video $err");
+              _uploadVideoController.sink.add({"videoUrl": "", "thumbUrl": "", "success": false});
+            }
+          } else {
+            _uploadVideoController.sink.add({"videoUrl": "", "thumbUrl": "", "success": false});
+          }
+        });
+      });
+    } catch (error) {
+      _uploadVideoController.sink.add({"videoUrl": "", "thumbUrl": "", "success": false});
+    }
+  }
+
+  static Future<void> uploadThumbnailFromVideo(String videoPath) async {
+    try {
+      var thumbnailBytes = await VideoThumbnail.thumbnailData(
+        video: videoPath,
+        imageFormat: ImageFormat.JPEG, // Hoặc PNG
+        maxWidth: 128,
+        quality: 75,
+      );
+
+      if (thumbnailBytes == null) {
+        throw Exception("Unable to create thumbnail");
+      }
+      String nameImg = "${DateTime.now().millisecondsSinceEpoch}_vtd182.webp";
+      int imageSize = thumbnailBytes.length;
+      // change size to mb
+      print(imageSize / pow(2, 20));
+
+      String url =
+          'https://firebasestorage.googleapis.com/v0/b/locket-img/o/users%2F$idUser%2Fmoments%2Fthumbnails%2F$nameImg?uploadType=resumable&name=users%2F$userId%2Fmoments%2Fthumbnails%2F$nameImg';
+      print(url);
+      var headers = {
+        'content-type': 'application/json; charset=UTF-8',
+        'authorization': 'Bearer $_idToken',
+        'x-goog-upload-protocol': 'resumable',
+        'accept': '*/*',
+        'x-goog-upload-command': 'start',
+        'x-goog-upload-content-length': imageSize.toString(),
+        'accept-language': 'vi-VN,vi;q=0.9',
+        'x-firebase-storage-version': 'ios/10.13.0',
+        'user-agent': 'com.locket.Locket/1.43.1 iPhone/17.3 hw/iPhone15_3 (GTMSUF/1)',
+        'x-goog-upload-content-type': 'image/webp',
+        'x-firebase-gmpid': '1:641029076083:ios:cc8eb46290d69b234fa609',
+      };
+
+      var data = json.encode({
+        "name": "users/$userId/moments/thumbnails/$nameImg",
+        "contentType": "image/*",
+        "bucket": "",
+        "metadata": {"creator": userId, "visibility": "private"}
+      });
 
       Response response = await _dio.post(
         url,
-        data: json.encode(req),
+        data: data,
         options: Options(
-          headers: {"Content-Type": "application/json"},
+          headers: headers,
+          validateStatus: (status) {
+            return status! < 500;
+          },
         ),
       );
 
+      String uploadUrl = response.headers.value('X-Goog-Upload-URL')!;
+      var uploadHeaders = {
+        'content-type': 'application/octet-stream',
+        'x-goog-upload-protocol': 'resumable',
+        'x-goog-upload-offset': '0',
+        'x-goog-upload-command': 'upload, finalize',
+        'upload-incomplete': '?0',
+        'upload-draft-interop-version': '3',
+        'user-agent': 'com.locket.Locket/1.43.1 iPhone/17.3 hw/iPhone15_3 (GTMSUF/1)'
+      };
+
+      try {
+        var uploadResponse = await _dio.put(
+          uploadUrl,
+          data: thumbnailBytes,
+          options: Options(
+            headers: uploadHeaders,
+            validateStatus: (status) {
+              return status! < 500;
+            },
+          ),
+        );
+        print(uploadResponse);
+      } catch (err) {
+        print("Error when update: $err");
+        _uploadImageController.sink.add({"url": "Lỗi!!!", "success": false});
+      }
+
+      print("Upload done");
+
+      var getUrl =
+          'https://firebasestorage.googleapis.com/v0/b/locket-img/o/users%2F$userId%2Fmoments%2Fthumbnails%2F$nameImg';
+      var getHeaders = {'content-type': 'application/json; charset=UTF-8', 'authorization': 'Bearer $_idToken'};
+      response = await _dio.get(getUrl, options: Options(headers: getHeaders));
+      String downloadToken = response.data['downloadTokens'];
+
+      String thumbnailUrl = "$getUrl?alt=media&token=$downloadToken";
+      print("UrlDownload: $thumbnailUrl");
+      _uploadImageController.sink.add({"url": thumbnailUrl, "success": true});
+    } catch (error) {
+      print("Error uploading image: $error");
+      _postImageController.sink.add(false);
+      _uploadImageController.sink.add({"url": "Lỗi!!!", "success": false});
+    }
+  }
+
+  // todo: finding api for post video
+  static Future<void> postVideo(String videoUrl, String thumbnailUrl, String caption) async {
+    try {
+      var postHeaders = {'content-type': 'application/json', 'authorization': 'Bearer $_idToken'};
+      var postData = json.encode({
+        "data": {"videoUrl": videoUrl, "thumbUrl": thumbnailUrl, "caption": caption}
+      });
+      var response = await _dio.post("https://api.locketcamera.com/postMomentV2",
+          data: postData, options: Options(headers: postHeaders));
+
       _postVideoController.sink.add(response.statusCode == 200);
+      print("VIDEOOOOOOO: $response");
     } catch (error) {
       print(error.toString());
       _postVideoController.sink.add(false);

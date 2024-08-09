@@ -9,11 +9,12 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
+  // image: 1mb
+  // video: 10mb
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Locket Uploader',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Color(Constants.yellowColor)),
         useMaterial3: true,

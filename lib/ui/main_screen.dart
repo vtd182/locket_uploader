@@ -159,6 +159,7 @@ class _MainScreenState extends State<MainScreen> {
     if (_mediaFile != null) {
       if (_mediaFile!.path.endsWith('.mp4') || _mediaFile!.path.endsWith('.mov') || _mediaFile!.path.endsWith('.MOV')) {
         _isUploading.add(true);
+        MyLocketServices.uploadVideoV2(File(_mediaFile!.path), File(_mediaFile!.path));
         MyLocketServices.uploadVideoStream.listen((videoResult) {
           if (videoResult['success']) {
             MyLocketServices.postVideo(
@@ -175,13 +176,15 @@ class _MainScreenState extends State<MainScreen> {
         _isUploading.add(true);
         MyLocketServices.uploadImageV2(
           File(_mediaFile!.path),
-          caption,
         );
 
         MyLocketServices.uploadImageStream.listen(
           (imageResult) {
             if (imageResult['success']) {
-              print("Success");
+              MyLocketServices.postImageV2(
+                imageResult['url'],
+                caption,
+              );
             } else {
               print('Error uploading image');
             }

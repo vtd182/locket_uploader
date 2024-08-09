@@ -209,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final isEmailValid = usernameFormKey.currentState?.validate() ?? false;
     final isPasswordValid = passwordFormKey.currentState?.validate() ?? false;
     final isValid = isEmailValid && isPasswordValid;
-    if (isValid) {
+    if (!isValid) {
       return;
     } else {
       final email = _emailTextController.text;
