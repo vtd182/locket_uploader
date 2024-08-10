@@ -1,17 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:locket_uploader/service/my_locket_service.dart';
-import 'package:locket_uploader/ui/main_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../bloc/app/app_cubit.dart';
 import '../constants/constants.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends StatelessWidget {
+  static const route = '/login';
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  Widget build(BuildContext context) {
+    return const LoginScreenView();
+  }
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class LoginScreenView extends StatefulWidget {
+  const LoginScreenView({super.key});
+
+  @override
+  State<LoginScreenView> createState() => _LoginScreenViewState();
+}
+
+class _LoginScreenViewState extends State<LoginScreenView> {
   final _emailTextController = TextEditingController();
   final _passwordTextController = TextEditingController();
   final usernameFormKey = GlobalKey<FormState>();
@@ -22,8 +32,33 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: _buildBody(),
+      body: BlocListener<AppCubit, AppState>(
+        listener: (context, state) {
+          if (state is AuthenticationLoading) {
+            // Show loading indicator
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              },
+            );
+          } else if (state is AuthenticationSuccess) {
+            Navigator.pop(context);
+          } else if (state is AuthenticationFailure) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Login failed"),
+              ),
+            );
+          }
+        },
+        child: SafeArea(
+          child: _buildBody(),
+        ),
       ),
     );
   }
@@ -215,16 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = _emailTextController.text;
       final password = _passwordTextController.text;
       try {
-        final token = await MyLocketServices.loginV2(email, password);
-        if (token != null) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => const MainScreen(),
-            ),
-          );
-        } else {
-          print(token);
-        }
+        context.read<AppCubit>().login(email, password);
       } catch (error) {
         print(error.toString());
         return null;

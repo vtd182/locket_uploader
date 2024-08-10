@@ -1,10 +1,25 @@
 part of 'main_screen_cubit.dart';
 
-sealed class MainScreenState extends Equatable {
+class MainScreenState extends Equatable {
   const MainScreenState();
-}
 
-final class MainScreenInitial extends MainScreenState {
   @override
   List<Object> get props => [];
+}
+
+class MainScreenInitial extends MainScreenState {
+  const MainScreenInitial();
+}
+
+class MainScreenUploading extends MainScreenState {
+  const MainScreenUploading();
+}
+
+class MainScreenUploadedSuccess extends MainScreenState {
+  const MainScreenUploadedSuccess();
+}
+
+class MainScreenUploadedFailure extends MainScreenState {
+  final String? error;
+  const MainScreenUploadedFailure({required this.error});
 }

@@ -1,6 +1,7 @@
 class Constants {
   static String emailRegex = r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+";
   static int yellowColor = 0xFFFFB705;
+  static String userIcon = "assets/images/user_ic.png";
   static var uploaderHeader = {
     'content-type': 'application/octet-stream',
     'x-goog-upload-protocol': 'resumable',

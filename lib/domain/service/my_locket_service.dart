@@ -42,6 +42,7 @@ class MyLocketServices {
       );
 
       if (response.statusCode == 200) {
+        print(response);
         _idToken = response.data['idToken'];
         idUser = response.data['localId'];
         return _idToken;

@@ -1,21 +1,46 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:locket_uploader/service/my_locket_service.dart';
+import 'package:locket_uploader/bloc/app/app_cubit.dart';
+import 'package:locket_uploader/domain/repositories/upload_repository.dart';
+import 'package:locket_uploader/models/user_profile.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:video_player/video_player.dart';
 
+import '../bloc/main_screen/main_screen_cubit.dart';
 import '../constants/constants.dart';
 
-class MainScreen extends StatefulWidget {
+class MainScreen extends StatelessWidget {
+  static const route = '/main';
   const MainScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) {
+        final uploadRepository = context.read<UploadRepository>();
+        return MainScreenCubit(uploadRepository);
+      }, // Khởi tạo MainScreenCubit
+      child: BlocBuilder<AppCubit, AppState>(
+        builder: (context, appState) {
+          return MainScreenView(userProfile: appState.userProfile);
+        },
+      ),
+    );
+  }
 }
 
-class _MainScreenState extends State<MainScreen> {
+class MainScreenView extends StatefulWidget {
+  final UserProfile? userProfile;
+  const MainScreenView({super.key, required this.userProfile});
+
+  @override
+  State<MainScreenView> createState() => _MainScreenViewState();
+}
+
+class _MainScreenViewState extends State<MainScreenView> {
   XFile? _mediaFile;
   VideoPlayerController? _videoController;
   final TextEditingController _captionController = TextEditingController();
@@ -155,43 +180,18 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _sendContent() {
-    print("send click");
     String caption = _captionController.text.trim();
     if (_mediaFile != null) {
       if (_mediaFile!.path.endsWith('.mp4') || _mediaFile!.path.endsWith('.mov') || _mediaFile!.path.endsWith('.MOV')) {
         _isUploading.add(true);
-        MyLocketServices.uploadVideoV2(File(_mediaFile!.path), File(_mediaFile!.path));
-        MyLocketServices.uploadVideoStream.listen((videoResult) {
-          if (videoResult['success']) {
-            MyLocketServices.postVideo(
-              videoResult['videoUrl'],
-              videoResult['thumbUrl'],
-              caption,
-            );
-          } else {
-            print('Error uploading video');
-          }
-          _isUploading.add(false);
-        });
+        final res =
+            context.read<MainScreenCubit>().postVideoToLocket(widget.userProfile!, File(_mediaFile!.path), caption);
+        _isUploading.add(false);
       } else {
         _isUploading.add(true);
-        MyLocketServices.uploadImage(
-          File(_mediaFile!.path),
-        );
-
-        MyLocketServices.uploadImageStream.listen(
-          (imageResult) {
-            if (imageResult['success']) {
-              MyLocketServices.postImageV2(
-                imageResult['url'],
-                caption,
-              );
-            } else {
-              print('Error uploading image');
-            }
-            _isUploading.add(false);
-          },
-        );
+        final res =
+            context.read<MainScreenCubit>().postImageToLocket(widget.userProfile!, File(_mediaFile!.path), caption);
+        _isUploading.add(false);
       }
     } else {
       print('No media selected');
@@ -200,12 +200,102 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: _buildBody(),
+    return BlocListener<MainScreenCubit, MainScreenState>(
+      listener: (context, state) {
+        if (state is MainScreenUploading) {
+          // Show loading indicator
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            },
+          );
+        } else if (state is MainScreenUploadedSuccess) {
+          Navigator.of(context).pop(); // Dismiss loading indicator
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Uploaded successfully")),
+          );
+        } else if (state is MainScreenUploadedFailure) {
+          Navigator.of(context).pop(); // Dismiss loading indicator
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("${state.error}")),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: _buildAppBar(),
+        body: SafeArea(
+          child: _buildBody(),
+        ),
       ),
     );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return widget.userProfile == null
+        ? AppBar(
+            backgroundColor: Colors.black,
+            elevation: 0,
+            actions: [
+              IconButton(
+                icon: Icon(
+                  size: 30,
+                  Icons.logout_sharp,
+                  color: Color(Constants.yellowColor),
+                ),
+                onPressed: () {
+                  print('Logout');
+                  context.read<AppCubit>().logout();
+                },
+              ),
+            ],
+          )
+        : AppBar(
+            backgroundColor: Colors.black,
+            elevation: 0,
+            actions: [
+              IconButton(
+                icon: Icon(
+                  size: 30,
+                  Icons.logout_sharp,
+                  color: Color(Constants.yellowColor),
+                ),
+                onPressed: () {
+                  print('Logout');
+                  context.read<AppCubit>().logout();
+                },
+              ),
+            ],
+            leading: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Color(Constants.yellowColor), width: 2),
+              ),
+              child: ClipOval(
+                child: (widget.userProfile?.profilePicture != null || widget.userProfile!.profilePicture.isNotEmpty)
+                    ? Image.network(
+                        widget.userProfile!.profilePicture,
+                        width: 24,
+                        height: 24,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.asset(Constants.userIcon),
+              ),
+            ),
+            title: Text(
+              widget.userProfile?.displayName ?? '',
+              style: TextStyle(
+                color: Color(Constants.yellowColor),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          );
   }
 
   Widget _buildBody() {
