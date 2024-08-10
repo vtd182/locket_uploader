@@ -155,6 +155,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _sendContent() {
+    print("send click");
     String caption = _captionController.text.trim();
     if (_mediaFile != null) {
       if (_mediaFile!.path.endsWith('.mp4') || _mediaFile!.path.endsWith('.mov') || _mediaFile!.path.endsWith('.MOV')) {
@@ -174,7 +175,7 @@ class _MainScreenState extends State<MainScreen> {
         });
       } else {
         _isUploading.add(true);
-        MyLocketServices.uploadImageV2(
+        MyLocketServices.uploadImage(
           File(_mediaFile!.path),
         );
 
