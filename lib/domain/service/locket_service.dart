@@ -108,7 +108,7 @@ class LocketService {
 
       var headers = {
         'content-type': 'application/json; charset=UTF-8',
-        'authorization': 'Bearer $idUser',
+        'authorization': 'Bearer $idToken',
         'x-goog-upload-protocol': 'resumable',
         'accept': '*/*',
         'x-goog-upload-command': 'start',
@@ -158,6 +158,7 @@ class LocketService {
 
       return "$getUrl?alt=media&token=$downloadToken";
     } catch (error) {
+      print("UPDATE STORAGE: $error");
       return null;
     }
   }
@@ -198,16 +199,66 @@ class LocketService {
   Future<bool> postVideo(String idToken, String videoUrl, String thumbnailUrl, String caption) async {
     try {
       var postHeaders = {'content-type': 'application/json', 'authorization': 'Bearer $idToken'};
-      var postData = json.encode({
-        "data": {"videoUrl": videoUrl, "thumbUrl": thumbnailUrl, "caption": caption}
-      });
+      print(thumbnailUrl);
+      print(videoUrl);
+      print(videoUrl.hashCode.toString());
+      print(caption);
+      var data = {
+        "data": {
+          "thumbnail_url": thumbnailUrl,
+          "video_url": videoUrl,
+          "md5": videoUrl.hashCode.toString(),
+          "recipients": [],
+          "analytics": {
+            "experiments": {
+              "flag_4": {"@type": "type.googleapis.com/google.protobuf.Int64Value", "value": "43"},
+              "flag_10": {"@type": "type.googleapis.com/google.protobuf.Int64Value", "value": "505"},
+              "flag_23": {"@type": "type.googleapis.com/google.protobuf.Int64Value", "value": "400"},
+              "flag_22": {"value": "1203", "@type": "type.googleapis.com/google.protobuf.Int64Value"},
+              "flag_19": {"value": "52", "@type": "type.googleapis.com/google.protobuf.Int64Value"},
+              "flag_18": {"@type": "type.googleapis.com/google.protobuf.Int64Value", "value": "1203"},
+              "flag_16": {"value": "303", "@type": "type.googleapis.com/google.protobuf.Int64Value"},
+              "flag_15": {"@type": "type.googleapis.com/google.protobuf.Int64Value", "value": "501"},
+              "flag_14": {"@type": "type.googleapis.com/google.protobuf.Int64Value", "value": "500"},
+              "flag_25": {"@type": "type.googleapis.com/google.protobuf.Int64Value", "value": "23"}
+            },
+            "amplitude": {
+              "device_id": "BF5D1FD7-9E4D-4F8B-AB68-B89ED20398A6",
+              "session_id": {"value": "1722437166613", "@type": "type.googleapis.com/google.protobuf.Int64Value"}
+            },
+            "google_analytics": {"app_instance_id": "5BDC04DA16FF4B0C9CA14FFB9C502900"},
+            "platform": "ios"
+          },
+          "sent_to_all": true,
+          "caption": caption,
+          "overlays": [
+            {
+              "data": {
+                "text": caption,
+                "text_color": "#FFFFFFE6",
+                "type": "standard",
+                "max_lines": {"@type": "type.googleapis.com/google.protobuf.Int64Value", "value": "4"},
+                "background": {"material_blur": "ultra_thin", "colors": []}
+              },
+              "alt_text": caption,
+              "overlay_id": "caption:standard",
+              "overlay_type": "caption"
+            }
+          ]
+        }
+      };
+      var response = await Dio().post(
+        "https://api.locketcamera.com/postMomentV2",
+        data: json.encode(data),
+        options: Options(headers: postHeaders),
+      );
 
-      var response = await _dio.post("https://api.locketcamera.com/postMomentV2",
-          data: postData, options: Options(headers: postHeaders));
+      print(response);
       final statusCode = response.data['result']['status'];
-      final res = response.statusCode == 200 && statusCode != 401;
+      final res = response.statusCode == 200 && statusCode != 401 && statusCode != 500;
       return res;
     } catch (error) {
+      print("Error posting video: $error");
       return false;
     }
   }
