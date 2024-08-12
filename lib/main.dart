@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:locket_uploader/constants/constants.dart';
 import 'package:locket_uploader/domain/repositories/upload_repository.dart';
+import 'package:locket_uploader/domain/service/local_service.dart';
 import 'package:locket_uploader/routes.dart';
 import 'package:locket_uploader/ui/login_screen.dart';
 import 'package:locket_uploader/ui/main_screen.dart';
@@ -12,6 +13,8 @@ import 'domain/repositories/auth_repository.dart';
 import 'domain/service/locket_service.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LocalService.ensureInitialized();
   runApp(const App());
 }
 
@@ -24,6 +27,7 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> {
   late final LocketService _locketService;
+  late final LocalService _localService;
   late final AuthRepository _authRepository;
   late final UploadRepository _uploadRepository;
 
@@ -31,7 +35,8 @@ class _AppState extends State<App> {
   void initState() {
     super.initState();
     _locketService = LocketService();
-    _authRepository = AuthRepositoryImpl(_locketService);
+    _localService = LocalService.getInstanceSync();
+    _authRepository = AuthRepositoryImpl(_locketService, _localService);
     _uploadRepository = UploadRepositoryImpl(_locketService);
   }
 

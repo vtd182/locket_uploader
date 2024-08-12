@@ -257,4 +257,10 @@ class _LoginScreenViewState extends State<LoginScreenView> {
       }
     }
   }
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<AppCubit>().autoLogin();
+  }
 }

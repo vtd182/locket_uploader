@@ -34,4 +34,14 @@ class AppCubit extends Cubit<AppState> {
     emit(state.copyWith(userProfile: null, status: AuthenticationStatus.unauthenticated));
     emit(const LogoutSuccess());
   }
+
+  Future<void> autoLogin() async {
+    emit(const AuthenticationLoading());
+    final userProfile = _authRepository.getLocalUserProfile();
+    if (userProfile != null) {
+      emit(state.copyWith(userProfile: userProfile, status: AuthenticationStatus.authenticated));
+    } else {
+      emit(const AppState());
+    }
+  }
 }

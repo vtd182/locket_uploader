@@ -22,4 +22,14 @@ class UserProfile {
       profilePicture: json['profilePicture'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'localId': id,
+      'email': email,
+      'displayName': displayName,
+      'idToken': idToken,
+      'profilePicture': profilePicture,
+    };
+  }
 }

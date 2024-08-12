@@ -1,3 +1,4 @@
+import 'package:locket_uploader/domain/service/local_service.dart';
 import 'package:locket_uploader/models/user_profile.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -14,14 +15,17 @@ abstract class AuthRepository {
   });
 
   void logoutV1();
+
+  UserProfile? getLocalUserProfile();
 }
 
 class AuthRepositoryImpl implements AuthRepository {
   final LocketService _locketService;
+  final LocalService _localService;
   final BehaviorSubject<AuthenticationStatus> _statusController = BehaviorSubject.seeded(AuthenticationStatus.unknown);
   final BehaviorSubject<UserProfile?> _userController = BehaviorSubject<UserProfile?>.seeded(null);
 
-  AuthRepositoryImpl(this._locketService);
+  AuthRepositoryImpl(this._locketService, this._localService);
 
   @override
   Stream<AuthenticationStatus> get status => _statusController.stream;
@@ -37,6 +41,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final userProfile = await _locketService.login(email, password);
       _userController.add(userProfile);
+      _localService.saveLocalUserProfile(userProfile);
       _statusController.add(AuthenticationStatus.authenticated);
     } catch (error) {
       print(error);
@@ -49,6 +54,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   void logoutV1() {
     _statusController.add(AuthenticationStatus.unauthenticated);
+    _localService.saveLocalUserProfile(null);
     _userController.add(null);
   }
 
@@ -56,5 +62,10 @@ class AuthRepositoryImpl implements AuthRepository {
   void dispose() {
     _statusController.close();
     _userController.close();
+  }
+
+  @override
+  UserProfile? getLocalUserProfile() {
+    return _localService.getLocalUserProfile();
   }
 }
