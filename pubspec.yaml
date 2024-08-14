@@ -34,6 +34,10 @@ dependencies:
   cupertino_icons: ^1.0.6
   firebase_core: ^3.3.0
   shared_preferences: ^2.3.1
+  flutter_image_compress: ^2.3.0
+  path_provider: ^2.1.4
+  flutter_launcher_icons: ^0.13.1
+  rename_app: ^1.6.1
 
 dev_dependencies:
   flutter_test:
